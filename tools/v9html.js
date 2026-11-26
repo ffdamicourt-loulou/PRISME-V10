@@ -39,7 +39,7 @@ async function gunzipBlock(id){
  return new TextDecoder().decode(buf);
 }
 const MAP=document.getElementById('map');
-const FRN={AL:'Albanie',AT:'Autriche',BA:'Bosnie-Herzégovine',BE:'Belgique',BG:'Bulgarie',BY:'Biélorussie',CH:'Suisse',CY:'Chypre',CZ:'Tchéquie',DE:'Allemagne',DK:'Danemark',EE:'Estonie',ES:'Espagne',FR:'France',GB:'Royaume-Uni',GR:'Grèce',HR:'Croatie',HU:'Hongrie',IE:'Irlande',IS:'Islande',IT:'Italie',LI:'Liechtenstein',LT:'Lituanie',LU:'Luxembourg',LV:'Lettonie',MD:'Moldavie',ME:'Monténégro',MK:'Macédoine du Nord',MT:'Malte',NL:'Pays-Bas',NO:'Norvège',PL:'Pologne',PT:'Portugal',RO:'Roumanie',RS:'Serbie',SE:'Suède',SI:'Slovénie',SK:'Slovaquie',UA:'Ukraine',XK:'Kosovo'};
+const FRN={AL:'Albanie',AT:'Autriche',BA:'Bosnie-Herzégovine',BE:'Belgique',BG:'Bulgarie',BY:'Biélorussie',CH:'Suisse',CY:'Chypre',CZ:'Tchéquie',DE:'Allemagne',DK:'Danemark',EE:'Estonie',ES:'Espagne',FI:'Finlande',FR:'France',GB:'Royaume-Uni',GR:'Grèce',HR:'Croatie',HU:'Hongrie',IE:'Irlande',IS:'Islande',IT:'Italie',LI:'Liechtenstein',LT:'Lituanie',LU:'Luxembourg',LV:'Lettonie',MD:'Moldavie',ME:'Monténégro',MK:'Macédoine du Nord',MT:'Malte',NL:'Pays-Bas',NO:'Norvège',PL:'Pologne',PT:'Portugal',RO:'Roumanie',RS:'Serbie',SE:'Suède',SI:'Slovénie',SK:'Slovaquie',UA:'Ukraine',XK:'Kosovo'};
 const N=${blocks.length};
 let VB=null,countries=null;
 function fit(){const b=${JSON.stringify([X0, Y0, X1, Y1])};
