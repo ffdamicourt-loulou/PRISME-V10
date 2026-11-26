@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+const z=require("zlib"),fs=require("fs");
+for(const iso of process.argv.slice(2)){try{const L=JSON.parse(z.gunzipSync(fs.readFileSync("/home/user/artifacts/v9/data/"+iso+"/land9.json.gz")).toString());console.log(iso.padEnd(3),(L.nom||"?").slice(0,16).padEnd(16),"anneaux="+String(L.n).padStart(5),"ways="+String(L.rings.reduce((a,r)=>a+r.length,0)).padStart(6));}catch(e){console.log(iso,"ERR "+e.message)}}

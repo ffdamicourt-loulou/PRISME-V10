@@ -1,0 +1,247 @@
+#!/usr/bin/env node
+// v9co.js — SILHOUETTE TERRESTRE d'un pays :
+//   node v9co.js <ISO> <n1levelsCSV>   → data/<ISO>/land9.json.gz (mode identifiants OSM)
+// Principe : les relations frontalières des pays maritimes descendent en mer
+// jusqu'aux eaux territoriales (segments maritime=yes) → côtes soudées et
+// « simplifiées ». Ici on construit au contraire :
+//   - frontières INTERNES (ways partagés par >= 2 régions) supprimées
+//   - ways maritime=yes supprimés (arcs en pleine mer)
+//   - ways natural=coastline AJOUTÉS : le vrai littoral OSM
+//   - littoral étranger présent dans l'extrait écarté : un way y entre
+//     seulement si son milieu est dans le polygone L2 du pays ET pas dans
+//     celui d'un voisin (les L2 des voisins sont dans rels.json).
+// Sortie : land9.json.gz { iso, nom, rings: [[ [wid,rev], ... ]] } où rings
+// sont des CYCLES FERMÉS d'identifiants (chaque cycle annoté par usage) —
+// et coastal.json.gz (ways littoral retenus, pour plonger dans v9flat).
+'use strict';
+const fs = require('fs'), zlib = require('zlib');
+const [ISO, N1CSV] = process.argv.slice(2);
+const WANT = new Set((N1CSV || '4').split(',').map(Number));
+const D = '/home/user/artifacts/v9/data/' + ISO;
+const rels = JSON.parse(zlib.gunzipSync(fs.readFileSync(D + '/rels.json.gz')).toString());
+const ways = JSON.parse(zlib.gunzipSync(fs.readFileSync(D + '/ways.json.gz')).toString());
+const nodes = JSON.parse(zlib.gunzipSync(fs.readFileSync(D + '/nodes.json.gz')).toString());
+const wm = new Map(); for (const w of ways) wm.set(w.id, w);
+const nm = new Map();
+for (let i = 0; i < nodes.ids.length; i++) nm.set(nodes.ids[i], [nodes.lons[i], nodes.lats[i]]);
+
+const own = (r) => ((r.iso1 || '').toUpperCase() === ISO) || ((r.iso2 || '').toUpperCase().startsWith(ISO + '-'))
+  || (ISO === 'GR' && /[\u0370-\u03FF]/.test(r.name || ''));
+const l2s = rels.filter(r => r.level === 2);
+const own2 = l2s.filter(r => r.iso1 === ISO);
+let n1rels;
+if (ISO === 'GR') n1rels = rels.filter(r => r.level === 6 && (r.name || '').includes('Ενότητα'));
+else n1rels = rels.filter(r => WANT.has(r.level) && own(r) && r.iso1 !== undefined);
+// usage parmi les régions SEULEMENT (le L2 national ne compte pas, sinon on
+// perdrait les frontières internationales partagées pays+region)
+const use = new Map();
+for (const r of n1rels) for (const m of r.members) if (m.t === 1) use.set(m.id, (use.get(m.id) || 0) + 1);
+let nInternes = 0;
+for (const c of use.values()) if (c >= 2) nInternes++;
+
+// ---- anneaux L2 (pour filtre d'appartenance du littoral) ----
+function chainRings(rel) {
+  const avail = rel.members.filter(m => m.t === 1 && (m.role === '' || m.role === 'outer')).map(m => m.id).filter(id => wm.has(id));
+  const used = new Set(); const rings = [];
+  const byEnd = new Map();
+  for (const wid of avail) { const refs = wm.get(wid).refs;
+    for (const e of [refs[0], refs[refs.length - 1]]) { if (!byEnd.has(e)) byEnd.set(e, []); byEnd.get(e).push(wid); } }
+  for (const start of avail) {
+    if (used.has(start)) continue; used.add(start);
+    const r0 = wm.get(start).refs;
+    const chain = [[start, 0]];
+    let end = r0[r0.length - 1], st = r0[0];
+    let g = 0;
+    while (end !== st && g++ < 100000) {
+      const c = (byEnd.get(end) || []).filter(w => !used.has(w));
+      if (!c.length) break; const w = c[0]; used.add(w);
+      const r = wm.get(w).refs;
+      if (r[0] === end) { chain.push([w, 0]); end = r[r.length - 1]; }
+      else { chain.push([w, 1]); end = r[0]; }
+    }
+    if (end === st) rings.push(chain);
+  }
+  return rings;
+}
+function ringCoords(chain) {
+  const pts = [];
+  for (const [wid, rev] of chain) {
+    const refs = wm.get(wid).refs;
+    const s = rev ? refs.slice().reverse() : refs;
+    for (let i = 0; i + 1 < s.length; i++) { const c = nm.get(s[i]); if (c) pts.push(c); }
+  }
+  return pts;
+}
+const ownPaths = [];
+for (const r of own2) for (const rg of chainRings(r)) ownPaths.push(ringCoords(rg));
+const foreignPaths = [];
+for (const r of l2s) { if (r.iso1 === ISO) continue; if (!r.iso1 || r.iso1.length !== 2) continue;
+  for (const rg of chainRings(r)) foreignPaths.push(ringCoords(rg)); }
+function pip(paths, x, y) {
+  let inside = false;
+  for (const po of paths) {
+    for (let i = 0; i + 1 < po.length; i++) {
+      const [x1, y1] = po[i], [x2, y2] = po[i + 1];
+      if ((y1 > y) !== (y2 > y)) { const xi = (x2 - x1) * (y - y1) / (y2 - y1) + x1; if (x < xi) inside = !inside; }
+    }
+  }
+  return inside;
+}
+// ---- sélection des ways du contour ----
+// ---- index spatial du littoral (grille 0.01°) ----
+const coastSegs = [];
+const grid = new Map();
+const CELL = 0.01;
+function gkey(x, y) { return Math.floor(x / CELL) + ',' + Math.floor(y / CELL); }
+for (const w of ways) {
+  if (!(w.tags || {}).natural || w.tags.natural !== 'coastline') continue;
+  const refs = w.refs;
+  for (let i = 0; i + 1 < refs.length; i++) {
+    const a = nm.get(refs[i]), b = nm.get(refs[i + 1]);
+    if (!a || !b) continue;
+    const idx = coastSegs.length; coastSegs.push([a[0], a[1], b[0], b[1]]);
+    const k1 = gkey(a[0], a[1]), k2 = gkey(b[0], b[1]);
+    if (!grid.has(k1)) grid.set(k1, []); grid.get(k1).push(idx);
+    if (k1 !== k2) { if (!grid.has(k2)) grid.set(k2, []); grid.get(k2).push(idx); }
+  }
+}
+function distCoast(x, y) {
+  let best = 1e9;
+  const gx = Math.floor(x / CELL), gy = Math.floor(y / CELL);
+  const seen = new Set();
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+    const l = grid.get((gx + dx) + ',' + (gy + dy));
+    if (!l) continue;
+    for (const i of l) { if (seen.has(i)) continue; seen.add(i);
+      const [x0, y0, x1, y1] = coastSegs[i];
+      const ddx = x1 - x0, ddy = y1 - y0;
+      const L = ddx * ddx + ddy * ddy;
+      let t = L ? ((x - x0) * ddx + (y - y0) * ddy) / L : 0;
+      t = Math.max(0, Math.min(1, t));
+      const ex = x0 + t * ddx - x, ey = y0 + t * ddy - y;
+      const d = ex * ex + ey * ey;
+      if (d < best) best = d;
+    }
+  }
+  return Math.sqrt(best);
+}
+const TOLC = 0.0018; // ~200 m : plus proche partout => « ligne de base » doublant le littoral
+const kept = new Map();
+let nMar = 0, nCoastAll = 0, nCoastOut = 0, nBase = 0, nMer = 0;
+for (const w of ways) {
+  const t = w.tags || {};
+  if (t.natural === 'coastline') {
+    nCoastAll++;
+    const refs = w.refs; const mid = refs[Math.floor(refs.length / 2)];
+    const c = nm.get(mid);
+    if (!c) continue;
+    if (ownPaths.length && !pip(ownPaths, c[0], c[1])) { nCoastOut++; continue; }
+    if (foreignPaths.some(fp => pip(fp, c[0], c[1]))) { nCoastOut++; continue; }
+    kept.set(w.id, 'coast'); continue;
+  }
+  if ((use.get(w.id) || 0) >= 2) continue;      // frontière interne de région
+  if (t.maritime === 'yes') { nMar++; continue; } // arc maritime explicite
+  // way LONGEANT le littoral ? (ligne de base administrative)
+  let near = true;
+  const step = Math.max(1, Math.floor(w.refs.length / 8));
+  for (let i = 0; i < w.refs.length; i += step) {
+    const c = nm.get(w.refs[i]);
+    if (c && distCoast(c[0], c[1]) > TOLC) { near = false; break; }
+  }
+  if (near && w.refs.length > 3) { nBase++; continue; }
+  // way administratif avec un segment > 12 km = arc en pleine mer non taggé
+  let maxd = 0;
+  for (let i = 0; i + 1 < w.refs.length; i++) {
+    const a = nm.get(w.refs[i]), b = nm.get(w.refs[i + 1]);
+    if (!a || !b) continue;
+    const d = (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+    if (d > maxd) maxd = d;
+  }
+  if (maxd > 0.105 * 0.105) { nMer++; continue; }
+  kept.set(w.id, 'adm');
+}
+// ---- graphe & cycles (traversée planaire, cf v9n1.js) ----
+const MY = (lat) => Math.asinh(Math.tan(lat * Math.PI / 180)) * 180 / Math.PI;
+const he = [];
+function addHalf(a, b, c) { he.push({ a: b, t: undefined, u: false, c }); return he.length - 1; }
+for (const [wid] of kept) {
+  const refs = wm.get(wid).refs;
+  for (let i = 0; i + 1 < refs.length; i++) {
+    const a = refs[i], b = refs[i + 1];
+    if (a === b) continue;
+    const coast = kept.get(wid) === 'coast' ? 1 : 0;
+    const h1 = addHalf(a, b, coast), h2 = addHalf(b, a, coast);
+    he[h1].t = h2; he[h2].t = h1;
+  }
+}
+const xy = new Map();
+for (const h of he) {
+  if (!xy.has(h.a)) { const p = nm.get(h.a); if (!p) { h.dead = true; continue; } xy.set(h.a, [p[0], MY(p[1])]); }
+  const b = he[h.t].a;
+  if (!xy.has(b)) { const p = nm.get(b); if (!p) { h.dead = true; continue; } xy.set(b, [p[0], MY(p[1])]); }
+  const ca = xy.get(h.a), cb = xy.get(b);
+  h.ang = Math.atan2(cb[1] - ca[1], cb[0] - ca[0]);
+}
+const byNode = new Map();
+for (let k = 0; k < he.length; k++) {
+  if (he[k].dead) continue;
+  let l = byNode.get(he[k].a); if (!l) byNode.set(he[k].a, l = []);
+  l.push(k);
+}
+for (const l of byNode.values()) l.sort((i, j) => he[i].ang - he[j].ang);
+function prevInRot(v, k) { const l = byNode.get(v); return l[(l.indexOf(k) - 1 + l.length) % l.length]; }
+const cycles = [];
+for (let k0 = 0; k0 < he.length; k0++) {
+  if (he[k0].dead || he[k0].u) continue;
+  const path = []; let coast = 0; let k = k0;
+  for (let g = 0; ; g++) {
+    if (g > 400000 || he[k].dead || he[k].u) break;
+    he[k].u = true; he[he[k].t].u = true;
+    path.push(he[k].a); coast |= he[k].c;
+    const t = he[k].t; k = prevInRot(he[t].a, t);
+    if (k === k0) break;
+  }
+  if (path.length > 2) cycles.push({ path, coast });
+}
+// ---- élagage : cycles imbriqués de profondeur impaire SANS littoral ----
+const coordCyc = cycles.map(c => c.path.map(id => xy.get(id)).filter(Boolean));
+function containsAny(others, p) {
+  const [x, y] = p; let inside = false;
+  for (const pa of others) {
+    for (let i = 0; i + 1 < pa.length; i++) {
+      const x1 = pa[i][0], y1 = pa[i][1], x2 = pa[i + 1][0], y2 = pa[i + 1][1];
+      if ((y1 > y) !== (y2 > y)) { const xi = (x2 - x1) * (y - y1) / (y2 - y1) + x1; if (x < xi) inside = !inside; }
+    }
+  }
+  return inside;
+}
+let nGhost = 0;
+// optimisation : seuls les grands cycles (>=1000 pts) peuvent contenir d'autres cycles
+const containers = [];
+coordCyc.forEach((pb, j) => { if (pb.length >= 1000) containers.push({ pts: pb, j }); });
+const depth = coordCyc.map((pa, i) => containsAny(containers.filter(c => c.j !== i).map(c => c.pts), pa[0]) ? 1 : 0);
+const finalCycles = cycles.filter((c, i) => { if (depth[i] % 2 === 1 && !c.coast) { nGhost++; return false; } return true; });
+// ---- sortie land9 (identifiants OSM, façon v9ring) ----
+// on remonte chaque cycle en liste de ways: index des ways par extrémite...
+// reconstruction: pour un cycle de nodes, retrouver les ways... simplification:
+// on stocke directement les COORDONNÉES (v9co = étape finale, pas d'augmentation future)
+const ps = [];
+let pts = 0, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+for (const c of finalCycles) {
+  let d = ''; let n = 0;
+  for (const id of c.path) {
+    const q = xy.get(id); if (!q) continue;
+    d += (n === 0 ? 'M' : 'L') + +q[0].toFixed(5) + ' ' + +q[1].toFixed(5);
+    n++;
+  }
+  if (n > 2) { d += 'Z'; ps.push(d); pts += n; }
+  for (const id of c.path) { const q = xy.get(id); if (!q) continue;
+    if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+}
+const blk = { iso: ISO, nom: (own2[0] && own2[0].name) || ISO, ps, b: [x0, y0, x1, y1],
+  boucles: ps.length, internes: nInternes, maritime: nMar,
+  littoral: nCoastAll - nCoastOut, littoralEcarte: nCoastOut, fantomes: nGhost, pts };
+fs.writeFileSync(D + '/co9.json.gz', zlib.gzipSync(Buffer.from(JSON.stringify(blk)), { level: 9 }));
+console.log(ISO, 'co: boucles=' + ps.length, 'pts=' + pts, 'littoral=' + (nCoastAll - nCoastOut),
+  'ecarte=' + nCoastOut, 'maritime=' + nMar, 'internes=' + nInternes, 'fantomes=' + nGhost,
+  (JSON.stringify(ps).length / 1e6).toFixed(1) + ' Mo');
