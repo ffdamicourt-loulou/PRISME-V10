@@ -62,3 +62,12 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 - **Affichage** : le bloc RU (blocs/RU.json.gz, 269 boucles) ne contient que le niveau pays — AUCUNE région affichée (validé nuit 3 : sondes 19/19, vision sans frontières internes). Si des régions sont visibles, c'est l'ANCIEN fichier HTML (808 boucles) : re-télécharger europe-v10-test.html.
 - **Package** : prisme-v10/regions/RU.regions.json.gz = bloc pré-dissolution (812 boucles, 163 807 pts, sujets individuels) conservé comme les autres pays à régions (DE/EE/PL/UA). Données régionales donc intactes, simplement non dessinées.
 - **GitHub** : commit 1228346 (RU.regions.json.gz.b64 1 056 737 car, 353 lignes, push vérifié longueur exacte). Zip prisme-v10-complet.zip reconstruit avec regions/RU.regions.json.gz.
+
+## 27/11 — Norvège : côte ouest simplifiée 25%, îles extrême nord supprimées
+
+- **Demande** : côte ouest de la NORVÈGE trop détaillée → simplifier ~25% ; supprimer les îles à l'extrême nord du tracé et du package.
+- **v9no2.js** : (1) 28 anneaux îles latmin > 71.5° (Svalbard + Bjørnøya/Hopen/Kong Karls) supprimés, 29 619 pts ; (2) côte ouest (zone lon < 17.5, frontières FI/RU non touchées) simplifiée par Douglas-Peucker calibré par dichotomie : tolérance 0.00096° merc, **43 401 pts retirés = 25.0% exactement**. Jan Mayen (lon −9) retiré ensuite (anneau lon < 0). Bloc : 305 → 276 boucles, 256 654 → 183 329 pts (pts champ inchangé par endroits, recalculé). Backup : out/backup/NO-pre-no2.json.gz.
+- **Validation** : rendu apercu-norvege-41.png + zoom Finnmark (vision : plus d'île détachée au nord, côte ouest continue Stavanger→cap Nord) ; sondes identiques avant/après (les 5 FAIL préexistantes = sondes en bordure de fjord à cette précision, pas des régressions) ; Longyearbyen/Jan Mayen/Féroé exclus.
+- **HTML** : régénéré 18.4 Mo, 41 pays, bbox top 103.00 (cap Nord désormais pointe nord de la carte).
+- **Package** : prisme-v10/blocs/NO.json.gz remplacé (îles extrême nord absentes du package, comme demandé) ; GitHub commit 40000ce (NO.json.gz.b64 1 492 742 car vérifié).
+- **Piège** : pip sur blocs NON fermés (anneaux sans répétition du 1er point) → fermer q.push(q[0],q[1]) avant test ; run_typescript limite 16 Mo → ne pas accumuler > ~25 résultats d'opérations (le push a réussi malgré le MemoryLimitError affiché après).
