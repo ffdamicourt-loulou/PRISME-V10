@@ -56,3 +56,9 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 - **Bugs corrigés dans v9ru3** : (a) winding w remis à zéro par groupe au lieu de persister sur la ligne (perdait la moitié du terrain) ; (b) fermeture prématurée au sommet de départ (continent fragmenté) → fermer sur l'ARÊTE de départ (next===e0 autorisé) ; (c) pip des trous comparait lat vs mercator.
 - **Validation** : sondes IN 19/19 (Moscou, StP, Perm, Samara, Astrakhan, Grozny, Oulianovsk, Novgorod, Toula, Mourmansk, Arkhangelsk, Krasnodar, Oufa, Kazan, Saratov, Kaliningrad, Syktyvkar, Voronej, Rostov) ; OUT OK (Iekaterinbourg, Tcheliabinsk, Novossibirsk, Salekhard) ; vision : aucune frontière interne, bord Oural continu au zoom. Limites : segment Orsk→Orenbourg droit vs fleuve méandreux (~50 km près d'Orenbourg), Sotchi absent (défaut RU-KDA inchangé), trame 0.002° ≈ 200 m de lissage.
 - **HTML** : régénéré 19.1 Mo, 41 pays (RU 269 boucles). Sondes via tools/v9probe-ru.js (pip flat, i+=2).
+
+## 27/11 — Régions Russie : hors affichage, conservées au package
+
+- **Affichage** : le bloc RU (blocs/RU.json.gz, 269 boucles) ne contient que le niveau pays — AUCUNE région affichée (validé nuit 3 : sondes 19/19, vision sans frontières internes). Si des régions sont visibles, c'est l'ANCIEN fichier HTML (808 boucles) : re-télécharger europe-v10-test.html.
+- **Package** : prisme-v10/regions/RU.regions.json.gz = bloc pré-dissolution (812 boucles, 163 807 pts, sujets individuels) conservé comme les autres pays à régions (DE/EE/PL/UA). Données régionales donc intactes, simplement non dessinées.
+- **GitHub** : commit 1228346 (RU.regions.json.gz.b64 1 056 737 car, 353 lignes, push vérifié longueur exacte). Zip prisme-v10-complet.zip reconstruit avec regions/RU.regions.json.gz.
