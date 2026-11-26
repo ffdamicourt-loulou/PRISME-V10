@@ -71,3 +71,12 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 - **HTML** : régénéré 18.4 Mo, 41 pays, bbox top 103.00 (cap Nord désormais pointe nord de la carte).
 - **Package** : prisme-v10/blocs/NO.json.gz remplacé (îles extrême nord absentes du package, comme demandé) ; GitHub commit 40000ce (NO.json.gz.b64 1 492 742 car vérifié).
 - **Piège** : pip sur blocs NON fermés (anneaux sans répétition du 1er point) → fermer q.push(q[0],q[1]) avant test ; run_typescript limite 16 Mo → ne pas accumuler > ~25 résultats d'opérations (le push a réussi malgré le MemoryLimitError affiché après).
+
+## 27/11 (2) — Grèce : 20% des plus petites îles supprimées ; Chypre : zone maritime retirée
+
+- **Demande** : supprimer les 20% des îles grecques les plus petites ; Chypre : la carte montrait sa zone maritime (erreur : on n'affiche pas les limites des zones maritimes) ; division Chypre en 2 (côté grec / côté turc) À INTÉGRER DANS LA PROCHAINE VERSION (v11).
+- **GR (tools/v9gr.js)** : 59 îles (hors continent) triées par aire shoelace corrigée latitude ; 12 plus petites supprimées (17-147 km² : Psara, Nisyros, Anafi, Folegandros, etc.) → 61→49 boucles, 54 328→50 287 pts. Backup out/backup/GR-pre-iles20.json.gz.
+- **CY** : le ps 0 (517 pts, lat jusqu'à 35,91°N, lon 32,02°O, 5,3 deg²) était la zone maritime (revendication EEZ/eaux territoriales) → supprimé ; reste l'île réelle (ps 5, 26 007 pts) + 4 fragments littoraux Larnaca. 6→5 boucles. Backup out/backup/CY-pre-maritime.json.gz.
+- **Validation** : sondes 20/21 OK (Rhodes : sonde préexistante en rade, identique avant/après) ; vision : Chypre = île simple entourée de mer, Crète/Rhodes intactes.
+- **v11 TODO** : Chypre divisée en 2 (République de Chypre / Chypre du Nord) — frontière OSM ligne verte (relation Northern Cyprus), à récupérer depuis hyperknot ou OSM ; deux blocs CY + CY-TR (ou multi-boucles avec trou frontalier).
+- **Publications** : HTML 18.4 Mo régénéré, apercu-grece-41.png, prisme-v10/blocs GR+CY remplacés, GitHub 0349ef4 (GR+CY b64), zip reconstruit.
