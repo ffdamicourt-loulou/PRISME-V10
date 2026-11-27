@@ -102,3 +102,9 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 ## 27/11 (5) — Frontières Andorre et Liechtenstein supprimées
 
 - Andorre : aucune frontière tracée (anneau annexé FR boucle 11 exclu du contour via champ `noci=[11]`, remplissage conservé). Liechtenstein : liseré supprimé (CH boucle 1, `noci=[1]`) → territoire fusionné visuellement avec la Suisse ; frontière LI/AT toujours dessinée par l'Autriche. v9annexe.js + filtre noci dans v9html.js. Backups FR/CH-pre-annexe. Commit bcd33ce (FR 172 765 / CH 375 201 car vérifiés). HTML 17,86 Mo.
+
+## 27/11 (6) — LOD 3 niveaux par pays
+
+- v9lod.js : L1 monde (DP 0.03°, îles ≥400 km²), L2 continent (DP 0.008°, îles ≥25 km²), L3 = final. Micro-états protégés. noci propagé.
+- v9lodhtml.js : europe-v10-lod.html 18,7 Mo — L1 instantané, L2/L3 préchargés invisiblement, bascule auto L2 < 33 % de la vue monde, L3 < 10 %. Sondes 3 niveaux OK.
+- Package : prisme-v10/blocs-lod/ (41 blocs {iso,nom,L[3]}), zip 56,2 Mo.
