@@ -47,44 +47,6 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 - **Validation** : sondes IN (Moscou, StP, Perm, Samara, Astrakhan, Grozny, Syktyvkar, Mourmansk, Arkhangelsk, Krasnodar, Oufa, Kazan, Saratov, Kaliningrad) ; OUT (Iekaterinbourg, Tcheliabinsk, Magnitogorsk, Orenbourg-est, Novossibirsk, Salekhard). Zoom Oural : bord est continu et lisse. Composantes blanches fermées : 3 mers (Noire/Caspienne/Azov) + Volga-Volgograd 271 km², tundra Vorkuta 229 km², fleuves/lacs ≤104 km².
 - **Restant connu** : bande côtière de Sotchi (~40×20 km) absente — défaut du geojson RU-KDA (w=0 même en nonzero, côte coupée) ; déjà absente de l'ancien bloc rel 60189. RU-FI : micro-enclaves Vyborg/Ladoga inchangées.
 
-## 26/11 nuit 3 — Russie : niveau pays UNIQUE (dissolution par trame)
+# 27/11 (4) — Micro-îles < 5 km²
 
-- **Demande** : plus aucune région/sujet affiché sur la carte Russie. Cause : le HTML trace 1 <path> par boucle, le bloc RU en avait 808 (une par morceau de sujet) → coutures visibles.
-- **Solution (tools/v9ru3.js)** : dissolution PAYS par trame — rasterisation nonzero 0.002° (~346 Mcellules, Uint8Array, --max-old-space-size=6000), extraction des arêtes de bord (terre à gauche), chaînage par tri des K1 + lowerBound, fermeture sur l'arête de départ, aires shoelace (extérieurs CCW ≥0.3 km², trous CW ≥350 km² pour boucher les fentes inter-sujets), Douglas-Peucker 0.0025 merc, sortie ps 5 décimales.
-- **Sujets manquants découverts** : RU-ULY (Oulianovsk), RU-NGR (Novgorod), RU-TUL (Toula) n'étaient PAS dans data/RU-hk (manquaient depuis le début) → 3 trous géants. Téléchargés via tools.github_app.get_file_contents + tools.file_system.write_file (47 453/47 536/39 518 octets). data/RU-hk = 59 sujets.
-- **Résultat** : v9ru2 → 812 boucles/163 807 pts (59 sujets, clip Europe inchangé) ; v9ru3 → **continent unique 3 693 527 km² + 268 îles = 269 boucles, 50 179 pts, 0 trou gardé**. Le drapeau noc devient inutile (contour blanc normal, comme les autres pays).
-- **Bugs corrigés dans v9ru3** : (a) winding w remis à zéro par groupe au lieu de persister sur la ligne (perdait la moitié du terrain) ; (b) fermeture prématurée au sommet de départ (continent fragmenté) → fermer sur l'ARÊTE de départ (next===e0 autorisé) ; (c) pip des trous comparait lat vs mercator.
-- **Validation** : sondes IN 19/19 (Moscou, StP, Perm, Samara, Astrakhan, Grozny, Oulianovsk, Novgorod, Toula, Mourmansk, Arkhangelsk, Krasnodar, Oufa, Kazan, Saratov, Kaliningrad, Syktyvkar, Voronej, Rostov) ; OUT OK (Iekaterinbourg, Tcheliabinsk, Novossibirsk, Salekhard) ; vision : aucune frontière interne, bord Oural continu au zoom. Limites : segment Orsk→Orenbourg droit vs fleuve méandreux (~50 km près d'Orenbourg), Sotchi absent (défaut RU-KDA inchangé), trame 0.002° ≈ 200 m de lissage.
-- **HTML** : régénéré 19.1 Mo, 41 pays (RU 269 boucles). Sondes via tools/v9probe-ru.js (pip flat, i+=2).
-
-## 27/11 — Régions Russie : hors affichage, conservées au package
-
-- **Affichage** : le bloc RU (blocs/RU.json.gz, 269 boucles) ne contient que le niveau pays — AUCUNE région affichée (validé nuit 3 : sondes 19/19, vision sans frontières internes). Si des régions sont visibles, c'est l'ANCIEN fichier HTML (808 boucles) : re-télécharger europe-v10-test.html.
-- **Package** : prisme-v10/regions/RU.regions.json.gz = bloc pré-dissolution (812 boucles, 163 807 pts, sujets individuels) conservé comme les autres pays à régions (DE/EE/PL/UA). Données régionales donc intactes, simplement non dessinées.
-- **GitHub** : commit 1228346 (RU.regions.json.gz.b64 1 056 737 car, 353 lignes, push vérifié longueur exacte). Zip prisme-v10-complet.zip reconstruit avec regions/RU.regions.json.gz.
-
-## 27/11 — Norvège : côte ouest simplifiée 25%, îles extrême nord supprimées
-
-- **Demande** : côte ouest de la NORVÈGE trop détaillée → simplifier ~25% ; supprimer les îles à l'extrême nord du tracé et du package.
-- **v9no2.js** : (1) 28 anneaux îles latmin > 71.5° (Svalbard + Bjørnøya/Hopen/Kong Karls) supprimés, 29 619 pts ; (2) côte ouest (zone lon < 17.5, frontières FI/RU non touchées) simplifiée par Douglas-Peucker calibré par dichotomie : tolérance 0.00096° merc, **43 401 pts retirés = 25.0% exactement**. Jan Mayen (lon −9) retiré ensuite (anneau lon < 0). Bloc : 305 → 276 boucles, 256 654 → 183 329 pts (pts champ inchangé par endroits, recalculé). Backup : out/backup/NO-pre-no2.json.gz.
-- **Validation** : rendu apercu-norvege-41.png + zoom Finnmark (vision : plus d'île détachée au nord, côte ouest continue Stavanger→cap Nord) ; sondes identiques avant/après (les 5 FAIL préexistantes = sondes en bordure de fjord à cette précision, pas des régressions) ; Longyearbyen/Jan Mayen/Féroé exclus.
-- **HTML** : régénéré 18.4 Mo, 41 pays, bbox top 103.00 (cap Nord désormais pointe nord de la carte).
-- **Package** : prisme-v10/blocs/NO.json.gz remplacé (îles extrême nord absentes du package, comme demandé) ; GitHub commit 40000ce (NO.json.gz.b64 1 492 742 car vérifié).
-- **Piège** : pip sur blocs NON fermés (anneaux sans répétition du 1er point) → fermer q.push(q[0],q[1]) avant test ; run_typescript limite 16 Mo → ne pas accumuler > ~25 résultats d'opérations (le push a réussi malgré le MemoryLimitError affiché après).
-
-## 27/11 (2) — Grèce : 20% des plus petites îles supprimées ; Chypre : zone maritime retirée
-
-- **Demande** : supprimer les 20% des îles grecques les plus petites ; Chypre : la carte montrait sa zone maritime (erreur : on n'affiche pas les limites des zones maritimes) ; division Chypre en 2 (côté grec / côté turc) À INTÉGRER DANS LA PROCHAINE VERSION (v11).
-- **GR (tools/v9gr.js)** : 59 îles (hors continent) triées par aire shoelace corrigée latitude ; 12 plus petites supprimées (17-147 km² : Psara, Nisyros, Anafi, Folegandros, etc.) → 61→49 boucles, 54 328→50 287 pts. Backup out/backup/GR-pre-iles20.json.gz.
-- **CY** : le ps 0 (517 pts, lat jusqu'à 35,91°N, lon 32,02°O, 5,3 deg²) était la zone maritime (revendication EEZ/eaux territoriales) → supprimé ; reste l'île réelle (ps 5, 26 007 pts) + 4 fragments littoraux Larnaca. 6→5 boucles. Backup out/backup/CY-pre-maritime.json.gz.
-- **Validation** : sondes 20/21 OK (Rhodes : sonde préexistante en rade, identique avant/après) ; vision : Chypre = île simple entourée de mer, Crète/Rhodes intactes.
-- **v11 TODO** : Chypre divisée en 2 (République de Chypre / Chypre du Nord) — frontière OSM ligne verte (relation Northern Cyprus), à récupérer depuis hyperknot ou OSM ; deux blocs CY + CY-TR (ou multi-boucles avec trou frontalier).
-- **Publications** : HTML 18.4 Mo régénéré, apercu-grece-41.png, prisme-v10/blocs GR+CY remplacés, GitHub 0349ef4 (GR+CY b64), zip reconstruit.
-
-## 27/11 (3) — Finlande côte ouest détaillée, Russie micro-îles supprimées, Islande redimensionnée
-
-- **FI (tools/v9fi4.js)** : la « côte ouest » affichée était l'enveloppe des eaux territoriales (lisse, segments 2,5 km). Substitution : section ouest de l'enveloppe remplacée par la vraie côte détaillée du backup coastvec (FI-pre-rel54224), zone lat 60.0-64.3 (Porkkala→Oulu), 29 677 pts à segments 128 m (au lieu de 277 pts), + 110 îles d'archipel (incl. Åland) reprises du bloc détaillé. Bande de fausse mer eaux territoriales (12 MN) retirée → mer blanche entre côte et ancienne enveloppe. 2 jonctions droites en mer (Porkkala ~200 m, Oulu ~30 km). Bloc : 111 boucles, 82 812 pts. Backup FI-pre-fi4.json.gz. Sondes OK (Hanko/Porkkala/Helsinki/Turku/Pori/Vaasa/Mariehamn TERRE, bandes mer → mer) ; zoom Vaasa vision : côte et archipel très détaillés.
-- **RU (tools/v9ru4-is.js)** : 216 micro-îles < 5 km² supprimées (3 056 pts) ; 52 îles conservées (Solovetsky etc.) + continent = 53 boucles, 47 123 pts. Backup RU-pre-microiles.json.gz. PIÈGE : aire shoelace FAUSSÉE si anneau non fermé (fermer avec le 1er point avant shoelace) — les îles semblaient ≥135 km².
-- **IS (même script)** : redimensionnée ×0,78 en mercator autour du centre bbox (aire apparente ÷1,64) — compensation de l'inflation Mercator à 65°N (facteur sec²≈5,6) vs îles britanniques (~57°N, sec²≈3,4), pour une taille apparente proportionnelle. Île sans voisin terrestre → aucun risque de couture. Backup IS-pre-resize.json.gz.
-- **HTML** : régénéré 18,8 Mo, 41 pays. Rendus : apercu-finlande-41, apercu-vaasa-zoom, apercu-islande-41, apercu-russie-41 (vision : Islande intacte, côtes russes nettoyées).
-- **GitHub** : c5f4276 (RU), 6db1ad2 (FI), 5758c6a (IS, 1 593 519 car vérifiés). Package prisme-v10/blocs mis à jour, zip reconstruit.
+Passe v9micro2.js (3 phases scan/cover/drop, enclaves protégées par test de couverture pip) : **2 544 îles supprimées** (DK 860, IE 942, PT 535, IS 125, HR 51, FI 29, FR 2), 149 658 points retirés. Enclaves intactes : Baarle-Hertog (BE 21), Baarle-Nassau (NL), Venn (DE), Llívia (FR), Brčko (BA). Backups pre-microiles-v2. Blocs DK/IE/PT/IS/FI/HR/FR repoussés sur GitHub. HTML 17,86 Mo régénéré. Reste TODO v11 : Chypre divisée grec/turc (ligne verte OSM).
