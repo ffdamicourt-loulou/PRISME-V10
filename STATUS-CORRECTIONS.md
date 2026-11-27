@@ -108,3 +108,9 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 - v9lod.js : L1 monde (DP 0.03°, îles ≥400 km²), L2 continent (DP 0.008°, îles ≥25 km²), L3 = final. Micro-états protégés. noci propagé.
 - v9lodhtml.js : europe-v10-lod.html 18,7 Mo — L1 instantané, L2/L3 préchargés invisiblement, bascule auto L2 < 33 % de la vue monde, L3 < 10 %. Sondes 3 niveaux OK.
 - Package : prisme-v10/blocs-lod/ (41 blocs {iso,nom,L[3]}), zip 56,2 Mo.
+
+## 27/11 (7) — Correctif viewer LOD (blocage « Chargement… »)
+
+- Cause : ids des script tags = index global d'embed (b0_0, b1_1, b2_2, b0_3…) au lieu de b{lvl}_{index-pays} → getElementById null → exception silencieuse.
+- Correctif v9lodhtml.js : ids b{lvl}_{ci}, data-iso, try/catch visible (« ERREUR: msg »). HTML régénéré.
+- Validation : simulation chargement viewer (gunzipBlock exact, 123 tags) : OK=123 FAIL=0. Règle : simuler avant de livrer tout HTML.
