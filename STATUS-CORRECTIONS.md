@@ -98,3 +98,7 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 - **Blocs** : DK 900→40 boucles, IE 958→16, PT 549→14, IS 127→2, FI 111→82, HR 106→55, FR 17→15. Sondes capitales OK.
 - **HTML** : 17,86 Mo, 41 pays, régénéré. GitHub : DK/IE/PT/IS/FI/HR/FR .json.gz.b64 poussés (tailles vérifiées : DK 1 712 462, IE 1 903 430, IS 1 465 420).
 - **TODO v11** : Chypre divisée grec/turc (ligne verte OSM).
+
+## 27/11 (5) — Frontières Andorre et Liechtenstein supprimées
+
+- Andorre : aucune frontière tracée (anneau annexé FR boucle 11 exclu du contour via champ `noci=[11]`, remplissage conservé). Liechtenstein : liseré supprimé (CH boucle 1, `noci=[1]`) → territoire fusionné visuellement avec la Suisse ; frontière LI/AT toujours dessinée par l'Autriche. v9annexe.js + filtre noci dans v9html.js. Backups FR/CH-pre-annexe. Commit bcd33ce (FR 172 765 / CH 375 201 car vérifiés). HTML 17,86 Mo.

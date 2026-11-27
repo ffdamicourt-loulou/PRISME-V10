@@ -56,3 +56,10 @@ Bloc HR enregistré (106 boucles, backup HR-post-iles-vectoriel.json.gz, sondes 
 - **Blocs modifiés** : DK (900→40 boucles), IE (958→16), PT (549→14), IS (127→2), FI (111→82), HR (106→55), FR (17→15).
 - **HTML** : régénéré 17,86 Mo, 41 pays. Push GitHub : DK/IE/PT/IS/FI/HR/FR .json.gz.b64 (tailles vérifiées).
 - **Pièges du tour** : (1) stdout node corrompu en octets nuls par redirection bash → rapports en fs.writeFileSync uniquement ; (2) kill mémoire silencieux du gros script mono-processus (exit=0 mensonger) → découpage en 3 passes par pays ; (3) limite de stockage artefact atteinte → purge v8 (759 Mo), zip v7, ghpush, out/n1, out/blocks, ancien zip v10.
+
+## 27/11 (5) — Frontières Andorre et Liechtenstein supprimées
+
+- **Demande** : supprimer les frontières d'Andorre ; supprimer la frontière ouest du Liechtenstein pour inclure son territoire dans la Suisse.
+- **v9annexe.js** : les anneaux annexés (AD dans FR boucle 11, LI dans CH boucle 1) restent remplis en gris mais sont exclus du TRACÉ DE CONTOUR blanc via le nouveau champ `noci` (indices de boucles sans liseré). v9html.js adapté : `d = ps.filter(i ∉ noci).join('')`.
+- **Résultat** : Andorre sans aucune frontière tracée (fusion visuelle avec la France) ; Liechtenstein sans liseré côté suisse (fusion visuelle avec la Suisse, la frontière LI/AT reste dessinée par l'Autriche). Remplissages inchangés, aucune perte de territoire.
+- **Backups** : out/backup/FR-pre-annexe.json.gz, CH-pre-annexe.json.gz. Blocs FR (noci=[11]) et CH (noci=[1]) repoussés (commit bcd33ce, tailles vérifiées). HTML 17,86 Mo régénéré. Le champ `noci` est le mécanisme générique pour tout futur pays annexé.
